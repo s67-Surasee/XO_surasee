@@ -1,0 +1,135 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(home: Scaffold(body: GameBoard()));
+  }
+}
+
+class GameBoard extends StatefulWidget {
+  @override
+  _GameBoardState createState() => _GameBoardState();
+}
+
+class _GameBoardState extends State<GameBoard> {
+  List<List<String>> board = List.generate(
+    3,
+    (_) => List.generate(3, (_) => ""),
+  );
+
+  bool playerturn = false; // o is false, x is true
+
+  void _tabletap(TapDownDetails details, double tablewidth) {
+    double cellSize = tablewidth / 3;
+    int col = (details.localPosition.dx / cellSize).floor();
+    int row = (details.localPosition.dy / cellSize).floor();
+
+    if (row >= 0 &&
+        row < 3 &&
+        col >= 0 &&
+        col < 3 &&
+        board[row][col] == '' &&
+        !playerturn) {
+      setState(() {
+        board[row][col] = "O";
+        playerturn = !playerturn;
+      });
+    }
+    if (row >= 0 &&
+        row < 3 &&
+        col >= 0 &&
+        col < 3 &&
+        board[row][col] == '' &&
+        playerturn) {
+      setState(() {
+        board[row][col] = "X";
+        playerturn = !playerturn;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double tableSize = (MediaQuery.of(context).size.width);
+    return MaterialApp(
+      title: 'Supa basic widget',
+      home: Scaffold(
+        body: GestureDetector(
+          onTapDown: (details) {
+            _tabletap(details, tableSize);
+            print(board);
+          },
+          child: CustomPaint(
+            size: Size(tableSize, tableSize),
+            painter: oxtableline(board),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class oxtableline extends CustomPainter {
+  final List<List<String>> board;
+  oxtableline(this.board);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    paint.color = Colors.black87;
+    paint.strokeWidth = 3;
+
+    double widthmg = size.width / 3;
+    double heightmg = size.height / 3;
+    double y = 0;
+    while (y <= 3) {
+      canvas.drawLine(
+        Offset(0, heightmg * y),
+        Offset(size.width, heightmg * y),
+        paint,
+      );
+      y++;
+    }
+
+    double x = 0;
+    while (x <= 3) {
+      canvas.drawLine(
+        Offset(widthmg * x, 0),
+        Offset(widthmg * x, size.height),
+        paint,
+      );
+      x++;
+    }
+
+    int row = 0;
+    while (row < 3) {
+      int col = 0;
+      while (col < 3) {
+        if (board[row][col] == 'O') {
+          final oPaint = Paint()
+            ..color = Colors.blue
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 6;
+          double cellSize = size.width / 3;
+          
+          final center = Offset(
+            col * cellSize + cellSize / 2,
+            row * cellSize + cellSize / 2,
+          );
+          final radius = cellSize / 3;
+          canvas.drawCircle(center, radius, oPaint);
+        }
+        col++;
+      }
+      row++;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}

@@ -1,0 +1,224 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: SafeArea(child: Scaffold(body: GameBoard())),
+    );
+  }
+}
+
+class GameBoard extends StatefulWidget {
+  @override
+  _GameBoardState createState() => _GameBoardState();
+}
+
+class _GameBoardState extends State<GameBoard> {
+  List<List<String>> board =
+      List.generate(3, (_) => List.generate(3, (_) => ""));
+  List<List<double>> circleRadius =
+      List.generate(3, (_) => List.generate(3, (_) => 0.0));
+  List<List<double>> xSize =
+      List.generate(3, (_) => List.generate(3, (_) => 0.0)); // ขนาดของ X
+
+  bool playerturn = false; // O = false, X = true
+  String winner = "";
+
+  void _tabletap(TapDownDetails details, double tablewidth) {
+    double cellSize = tablewidth / 3;
+    int col = (details.localPosition.dx / cellSize).floor();
+    int row = (details.localPosition.dy / cellSize).floor();
+
+    if (row >= 0 &&
+        row < 3 &&
+        col >= 0 &&
+        col < 3 &&
+        board[row][col] == "" &&
+        winner == "") {
+      setState(() {
+        board[row][col] = playerturn ? "X" : "O";
+        if (board[row][col] == "O") {
+          _growCircle(row, col, cellSize / 3);
+        } else {
+          _growX(row, col, cellSize / 2 - cellSize / 5); // ขยาย X จากกึ่งกลาง
+        }
+        playerturn = !playerturn;
+      });
+    }
+  }
+
+  void _growCircle(int row, int col, double maxRadius) async {
+    for (double r = 0; r <= maxRadius; r += 2) {
+      await Future.delayed(Duration(milliseconds: 16)); // ~60fps
+      setState(() {
+        circleRadius[row][col] = r;
+      });
+    }
+  }
+
+  void _growX(int row, int col, double maxSize) async {
+    for (double s = 0; s <= maxSize; s += 2) {
+      await Future.delayed(Duration(milliseconds: 16));
+      setState(() {
+        xSize[row][col] = s;
+      });
+    }
+  }
+
+  String playerText(bool player) {
+    return !playerturn ? "O" : "X";
+  }
+
+  String showWinner(List<List<String>> board) {
+    for (int i = 0; i < 3; i++) {
+      if (board[i][0] != "" &&
+          board[i][0] == board[i][1] &&
+          board[i][1] == board[i][2]) {
+        return board[i][0];
+      }
+    }
+    for (int j = 0; j < 3; j++) {
+      if (board[0][j] != "" &&
+          board[0][j] == board[1][j] &&
+          board[1][j] == board[2][j]) {
+        return board[0][j];
+      }
+    }
+    if (board[0][0] != "" &&
+        board[0][0] == board[1][1] &&
+        board[1][1] == board[2][2]) {
+      return board[0][0];
+    }
+    if (board[0][2] != "" &&
+        board[0][2] == board[1][1] &&
+        board[1][1] == board[2][0]) {
+      return board[0][2];
+    }
+    for (int k = 0; k < 3; k++) {
+      for (int l = 0; l < 3; l++) {
+        if (board[k][l] == "") return "";
+      }
+    }
+    return "Tie";
+  }
+
+  void clearboard() {
+    setState(() {
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          board[i][j] = "";
+          circleRadius[i][j] = 0.0;
+          xSize[i][j] = 0.0;
+        }
+      }
+      winner = "";
+      playerturn = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double tableSize = MediaQuery.of(context).size.width;
+    winner = showWinner(board);
+    return Scaffold(
+      body: GestureDetector(
+        onTapDown: (details) {
+          if (winner == "") {
+            _tabletap(details, tableSize);
+          }
+        },
+        child: Column(
+          children: [
+            CustomPaint(
+              size: Size(tableSize, tableSize),
+              painter: oxtableline(board, circleRadius, xSize),
+            ),
+            SizedBox(height: tableSize / 10),
+            Text("Turn : ${playerText(playerturn)}",
+                style: TextStyle(fontSize: 28)),
+            if (winner != "") ...[
+              SizedBox(height: tableSize / 10),
+              Text("Winner : $winner", style: TextStyle(fontSize: 28)),
+              ElevatedButton(
+                onPressed: clearboard,
+                child: Text('Clear board',
+                    style: TextStyle(fontSize: 28, color: Colors.black)),
+              ),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class oxtableline extends CustomPainter {
+  final List<List<String>> board;
+  final List<List<double>> circleRadius;
+  final List<List<double>> xSize;
+  oxtableline(this.board, this.circleRadius, this.xSize);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black87
+      ..strokeWidth = 3;
+
+    double cellSize = size.width / 3;
+
+    // Draw grid
+    for (int i = 1; i < 3; i++) {
+      canvas.drawLine(
+          Offset(0, cellSize * i), Offset(size.width, cellSize * i), paint);
+      canvas.drawLine(
+          Offset(cellSize * i, 0), Offset(cellSize * i, size.height), paint);
+    }
+
+    // Draw O and X
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        double left = col * cellSize;
+        double top = row * cellSize;
+
+        if (board[row][col] == 'O') {
+          final oPaint = Paint()
+            ..color = Colors.blue
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 6;
+          final center =
+              Offset(left + cellSize / 2, top + cellSize / 2);
+          canvas.drawCircle(center, circleRadius[row][col], oPaint);
+        } else if (board[row][col] == 'X') {
+          final xPaint = Paint()
+            ..color = Colors.redAccent
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = 6;
+
+          double sizeX = xSize[row][col];
+          final centerX = left + cellSize / 2;
+          final centerY = top + cellSize / 2;
+
+          // วาดเส้นทแยงออกจากกึ่งกลาง
+          canvas.drawLine(
+            Offset(centerX - sizeX, centerY - sizeX),
+            Offset(centerX + sizeX, centerY + sizeX),
+            xPaint,
+          );
+          canvas.drawLine(
+            Offset(centerX + sizeX, centerY - sizeX),
+            Offset(centerX - sizeX, centerY + sizeX),
+            xPaint,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
